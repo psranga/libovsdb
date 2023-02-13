@@ -25,6 +25,9 @@ var update chan model.Model
 
 var rootUUID string
 var connection = flag.String("ovsdb", "unix:/var/run/openvswitch/db.sock", "OVSDB connection string")
+var nwdevice = flag.String("device", "eth1", "local interface to add to ovs (must exist)")
+var mac = flag.String("mac", "01:02:03:04:05:06", "mac address to set in ovs")
+var lsp = flag.String("lsp", "lsp00", "logical switch port to set in ovs")
 
 func play(ovs client.Client) {
 	go processInput(ovs)
@@ -92,51 +95,96 @@ func processInput(ovs client.Client) {
 	}
 }
 
+// sudo ovs-vsctl -- --id=@if0 create Interface name=eth1 -- --id=@port0 create Port name=eth1 interfaces=@if0 -- add Bridge obr0 ports @port0
 func main() {
 	flag.Parse()
-	quit = make(chan bool)
-	update = make(chan model.Model)
 
-	clientDBModel, err := model.NewClientDBModel("Open_vSwitch",
-		map[string]model.Model{bridgeTable: &vswitchd.Bridge{}, ovsTable: &vswitchd.OpenvSwitch{}})
+	clientDBModel, err := vswitchd.FullDatabaseModel()
 	if err != nil {
 		log.Fatal("Unable to create DB model ", err)
 	}
+	log.Println("Got client db model via FullDatabaseModel.")
 
 	ovs, err := client.NewOVSDBClient(clientDBModel, client.WithEndpoint(*connection))
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Printf("Created db client object for connection to: %s\n", *connection)
+
 	err = ovs.Connect(context.Background())
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Printf("Success connecting to db. connection: %s\n", *connection)
 	defer ovs.Disconnect()
 
 	ovs.Cache().AddEventHandler(&cache.EventHandlerFuncs{
 		AddFunc: func(table string, model model.Model) {
-			if table == bridgeTable {
-				update <- model
-			}
+			log.Printf("AddFunc: Received update in table: %s", table)
+			log.Printf("AddFunc: Received update: %v", model)
 		},
 	})
-	_, err = ovs.Monitor(
-		context.TODO(),
-		ovs.NewMonitor(
-			client.WithTable(&vswitchd.OpenvSwitch{}),
-			client.WithTable(&vswitchd.Bridge{}),
-		),
-	)
+	_, err = ovs.MonitorAll(context.TODO())
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Println("Success MonitorAll.")
 
 	// Get root UUID
 	for uuid := range ovs.Cache().Table("Open_vSwitch").Rows() {
 		rootUUID = uuid
+		log.Printf("Got root UUID: %s\n", rootUUID)
 	}
+	log.Printf("Final root UUID is: %s\n", rootUUID)
 
-	fmt.Println(`Silly game of stopping this app when a Bridge with name "stop" is monitored !`)
-	go play(ovs)
-	<-quit
+	log.Println("Exiting.")
 }
+
+// func main() {
+// 	flag.Parse()
+// 	quit = make(chan bool)
+// 	update = make(chan model.Model)
+
+// 	clientDBModel, err := model.NewClientDBModel("Open_vSwitch",
+// 		map[string]model.Model{bridgeTable: &vswitchd.Bridge{}, ovsTable: &vswitchd.OpenvSwitch{}})
+// 	if err != nil {
+// 		log.Fatal("Unable to create DB model ", err)
+// 	}
+
+// 	ovs, err := client.NewOVSDBClient(clientDBModel, client.WithEndpoint(*connection))
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	err = ovs.Connect(context.Background())
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	defer ovs.Disconnect()
+
+// 	ovs.Cache().AddEventHandler(&cache.EventHandlerFuncs{
+// 		AddFunc: func(table string, model model.Model) {
+// 			if table == bridgeTable {
+// 				update <- model
+// 			}
+// 		},
+// 	})
+// 	_, err = ovs.Monitor(
+// 		context.TODO(),
+// 		ovs.NewMonitor(
+// 			client.WithTable(&vswitchd.OpenvSwitch{}),
+// 			client.WithTable(&vswitchd.Bridge{}),
+// 		),
+// 	)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+
+// 	// Get root UUID
+// 	for uuid := range ovs.Cache().Table("Open_vSwitch").Rows() {
+// 		rootUUID = uuid
+// 	}
+
+// 	fmt.Println(`Silly game of stopping this app when a Bridge with name "stop" is monitored !`)
+// 	go play(ovs)
+// 	<-quit
+// }
