@@ -81,11 +81,60 @@ func createBridge(ovs client.Client, bridgeName string) {
 	fmt.Println("Bridge Addition Successful : ", reply[0].UUID.GoUUID)
 }
 
+// sudo ovs-vsctl -- --id=@if0 create Interface name=eth1 -- --id=@port0 create Port name=eth1 interfaces=@if0 -- add Bridge obr0 ports @port0
+func createPortOnBridge(ovs client.Client, bridgeName, interfaceName string) {
+	log.Printf("createInterface(): creating interface named: %s on bridge: %s", *nwdevice, bridgeName)
+
+	newInterface := vswitchd.Interface{
+		UUID: "atif0",
+		Name: interfaceName,
+	}
+	interfaceOps, err := ovs.Create(&newInterface)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Created insertOps: #", len(interfaceOps))
+
+	newPort := vswitchd.Port{
+		UUID:       "atport0",
+		Name:       interfaceName,
+		Interfaces: []string{"atif0"},
+	}
+	portOps, err := ovs.Create(&newPort)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Created PortOps: #", len(portOps))
+
+	// ovsRow := vswitchd.OpenvSwitch{
+	// 	UUID: rootUUID,
+	// }
+	// mutateOps, err := ovs.Where(&ovsRow).Mutate(&ovsRow, model.Mutation{
+	// 	Field:   &ovsRow.Bridges,
+	// 	Mutator: "insert",
+	// 	Value:   []string{bridge.UUID},
+	// })
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	// operations := append(insertOp, mutateOps...)
+	operations := append(interfaceOps, portOps...)
+	reply, err := ovs.Transact(context.TODO(), operations...)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if _, err := ovsdb.CheckOperationResults(reply, operations); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Interface Addition Successful : ", reply[0].UUID.GoUUID)
+}
+
 func createInterface(ovs client.Client, interfaceName string) {
 	log.Printf("createInterface(): creating interface named: %s", *nwdevice)
 
 	newInterface := vswitchd.Interface{
-		UUID: uuid.NewString(),
+		UUID: "atif0",
 		Name: interfaceName,
 	}
 	insertOps, err := ovs.Create(&newInterface)
@@ -163,7 +212,7 @@ func main() {
 		log.Fatal("Need non-empty --device argument.")
 	}
 	log.Printf("About to create interface named: %s", *nwdevice)
-	createInterface(ovs, *nwdevice)
+	createPortOnBridge(ovs, "br-int", *nwdevice)
 
 	log.Println("Exiting.")
 }
