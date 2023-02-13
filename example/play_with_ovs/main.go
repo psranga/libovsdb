@@ -81,6 +81,42 @@ func createBridge(ovs client.Client, bridgeName string) {
 	fmt.Println("Bridge Addition Successful : ", reply[0].UUID.GoUUID)
 }
 
+func createInterface(ovs client.Client, interfaceName string) {
+	log.Printf("createInterface(): creating interface named: %s", *nwdevice)
+
+	newInterface := vswitchd.Interface{
+		UUID: uuid.NewString(),
+		Name: interfaceName,
+	}
+	insertOps, err := ovs.Create(&newInterface)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// ovsRow := vswitchd.OpenvSwitch{
+	// 	UUID: rootUUID,
+	// }
+	// mutateOps, err := ovs.Where(&ovsRow).Mutate(&ovsRow, model.Mutation{
+	// 	Field:   &ovsRow.Bridges,
+	// 	Mutator: "insert",
+	// 	Value:   []string{bridge.UUID},
+	// })
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+
+	// operations := append(insertOp, mutateOps...)
+	operations := insertOps
+	reply, err := ovs.Transact(context.TODO(), operations...)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if _, err := ovsdb.CheckOperationResults(reply, operations); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Interface Addition Successful : ", reply[0].UUID.GoUUID)
+}
+
 // sudo ovs-vsctl -- --id=@if0 create Interface name=eth1 -- --id=@port0 create Port name=eth1 interfaces=@if0 -- add Bridge obr0 ports @port0
 func main() {
 	flag.Parse()
@@ -126,7 +162,8 @@ func main() {
 	if len(*nwdevice) <= 0 {
 		log.Fatal("Need non-empty --device argument.")
 	}
-	log.Printf("Creating interface named: %s", *nwdevice)
+	log.Printf("About to create interface named: %s", *nwdevice)
+	createInterface(ovs, *nwdevice)
 
 	log.Println("Exiting.")
 }
