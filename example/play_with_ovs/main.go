@@ -85,15 +85,18 @@ func createBridge(ovs client.Client, bridgeName string) {
 func createPortOnBridge(ovs client.Client, bridgeName, interfaceName string) {
 	log.Printf("createInterface(): creating interface named: %s on bridge: %s", *nwdevice, bridgeName)
 
-	newInterface := vswitchd.Interface{
-		UUID: "atif0",
-		Name: interfaceName,
-	}
-	interfaceOps, err := ovs.Create(&newInterface)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("Created insertOps: #", len(interfaceOps))
+	operations := []ovsdb.Operation{}
+
+	// newInterface := vswitchd.Interface{
+	// 	UUID: "atif0",
+	// 	Name: interfaceName,
+	// }
+	// interfaceOps, err := ovs.Create(&newInterface)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// fmt.Println("Created insertOps: #", len(interfaceOps))
+	// operations = append(operations, interfaceOps...)
 
 	newPort := vswitchd.Port{
 		UUID:       "atport0",
@@ -105,6 +108,7 @@ func createPortOnBridge(ovs client.Client, bridgeName, interfaceName string) {
 		log.Fatal(err)
 	}
 	fmt.Println("Created PortOps: #", len(portOps))
+	operations = append(operations, portOps...)
 
 	// ovsRow := vswitchd.OpenvSwitch{
 	// 	UUID: rootUUID,
@@ -119,7 +123,7 @@ func createPortOnBridge(ovs client.Client, bridgeName, interfaceName string) {
 	// }
 
 	// operations := append(insertOp, mutateOps...)
-	operations := append(interfaceOps, portOps...)
+	fmt.Println("Transactiung operations: #", len(operations))
 	reply, err := ovs.Transact(context.TODO(), operations...)
 	if err != nil {
 		log.Fatal(err)
