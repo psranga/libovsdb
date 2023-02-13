@@ -99,9 +99,9 @@ func createPortOnBridge(ovs client.Client, bridgeName, interfaceName string) {
 	// operations = append(operations, interfaceOps...)
 
 	newPort := vswitchd.Port{
-		UUID:       "atport0",
-		Name:       interfaceName,
-		Interfaces: []string{"atif0"},
+		UUID: "atport0",
+		Name: interfaceName,
+		// Interfaces: []string{"atif0"},
 	}
 	portOps, err := ovs.Create(&newPort)
 	if err != nil {
