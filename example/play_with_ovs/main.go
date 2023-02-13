@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/google/uuid"
 	"github.com/ovn-org/libovsdb/cache"
 	"github.com/ovn-org/libovsdb/client"
 	"github.com/ovn-org/libovsdb/example/vswitchd"
@@ -20,39 +21,36 @@ const (
 	ovsTable    = "Open_vSwitch"
 )
 
-var quit chan bool
-var update chan model.Model
-
 var rootUUID string
 var connection = flag.String("ovsdb", "unix:/var/run/openvswitch/db.sock", "OVSDB connection string")
 var nwdevice = flag.String("device", "eth1", "local interface to add to ovs (must exist)")
 var mac = flag.String("mac", "01:02:03:04:05:06", "mac address to set in ovs")
 var lsp = flag.String("lsp", "lsp00", "logical switch port to set in ovs")
 
-func play(ovs client.Client) {
-	go processInput(ovs)
-	for model := range update {
-		bridge := model.(*vswitchd.Bridge)
-		if bridge.Name == "stop" {
-			fmt.Printf("Bridge stop detected: %+v\n", *bridge)
-			ovs.Disconnect()
-			quit <- true
-		} else {
-			fmt.Printf("Current list of bridges:\n")
-			var bridges []vswitchd.Bridge
-			if err := ovs.List(context.Background(), &bridges); err != nil {
-				log.Fatal(err)
-			}
-			for _, b := range bridges {
-				fmt.Printf("UUID: %s  Name: %s\n", b.UUID, b.Name)
-			}
-		}
-	}
-}
+// func play(ovs client.Client) {
+// 	go processInput(ovs)
+// 	for model := range update {
+// 		bridge := model.(*vswitchd.Bridge)
+// 		if bridge.Name == "stop" {
+// 			fmt.Printf("Bridge stop detected: %+v\n", *bridge)
+// 			ovs.Disconnect()
+// 			quit <- true
+// 		} else {
+// 			fmt.Printf("Current list of bridges:\n")
+// 			var bridges []vswitchd.Bridge
+// 			if err := ovs.List(context.Background(), &bridges); err != nil {
+// 				log.Fatal(err)
+// 			}
+// 			for _, b := range bridges {
+// 				fmt.Printf("UUID: %s  Name: %s\n", b.UUID, b.Name)
+// 			}
+// 		}
+// 	}
+// }
 
 func createBridge(ovs client.Client, bridgeName string) {
 	bridge := vswitchd.Bridge{
-		UUID: "gopher",
+		UUID: uuid.NewString(),
 		Name: bridgeName,
 	}
 	insertOp, err := ovs.Create(&bridge)
@@ -81,18 +79,6 @@ func createBridge(ovs client.Client, bridgeName string) {
 		log.Fatal(err)
 	}
 	fmt.Println("Bridge Addition Successful : ", reply[0].UUID.GoUUID)
-}
-
-func processInput(ovs client.Client) {
-	for {
-		fmt.Printf("\n Enter a Bridge Name : ")
-		var bridgeName string
-		fmt.Scanf("%s", &bridgeName)
-		if bridgeName == "" {
-			continue
-		}
-		createBridge(ovs, bridgeName)
-	}
 }
 
 // sudo ovs-vsctl -- --id=@if0 create Interface name=eth1 -- --id=@port0 create Port name=eth1 interfaces=@if0 -- add Bridge obr0 ports @port0
@@ -136,6 +122,11 @@ func main() {
 		log.Printf("Got root UUID: %s\n", rootUUID)
 	}
 	log.Printf("Final root UUID is: %s\n", rootUUID)
+
+	if len(*nwdevice) <= 0 {
+		log.Fatal("Need non-empty --device argument.")
+	}
+	log.Printf("Creating interface named: %s", *nwdevice)
 
 	log.Println("Exiting.")
 }
