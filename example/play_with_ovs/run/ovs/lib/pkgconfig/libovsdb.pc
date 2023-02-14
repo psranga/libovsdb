@@ -1,0 +1,11 @@
+prefix=/home/ranga/opt/ovs
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: libovsdb
+Description: OVSDB library of Open vSwitch
+Version: 3.1.90
+Libs: -L${libdir} -lovsdb
+Libs.private: -latomic -lm 
+Cflags: -I${includedir}

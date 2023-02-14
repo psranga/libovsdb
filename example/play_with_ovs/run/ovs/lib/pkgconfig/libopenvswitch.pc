@@ -1,0 +1,11 @@
+prefix=/home/ranga/opt/ovs
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: libopenvswitch
+Description: Open vSwitch library
+Version: 3.1.90
+Libs: -L${libdir} -lopenvswitch
+Libs.private: -latomic -lm  -lssl -lcrypto 
+Cflags: -I${includedir}
