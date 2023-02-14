@@ -2,6 +2,7 @@ package mapper
 
 import (
 	"fmt"
+	"log"
 	"reflect"
 
 	"github.com/ovn-org/libovsdb/ovsdb"
@@ -122,6 +123,7 @@ func (m Mapper) NewRow(data *Info, fields ...interface{}) (ovsdb.Row, error) {
 		if err != nil {
 			return nil, fmt.Errorf("table %s, column %s: failed to generate ovs element. %s", data.Metadata.TableName, name, err.Error())
 		}
+		log.Printf("table %s, column %s: generated ovs element.", data.Metadata.TableName, name)
 		ovsRow[name] = ovsElem
 	}
 	return ovsRow, nil

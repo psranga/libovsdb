@@ -2,6 +2,7 @@ package ovsdb
 
 import (
 	"fmt"
+	"log"
 	"reflect"
 )
 
@@ -434,7 +435,20 @@ func isDefaultBaseValue(elem interface{}, etype ExtendedType) bool {
 		return elem.(string) == "00000000-0000-0000-0000-000000000000" || elem.(string) == "" || isNamed(elem.(string))
 	case TypeMap, TypeSet:
 		if value.Kind() == reflect.Array {
-			return value.Len() == 0
+			// or if all the values are themselves zero values for that type.
+			rsl := true
+			for i := 0; i < value.Len(); i++ {
+				vi := value.Index(i)
+				if vi.IsValid() && !vi.IsZero() {
+					rsl = false
+					if value.Len() == 4096 {
+						log.Printf("explicit value: i: %d rsl updated to: %t\n", i, rsl)
+					}
+				}
+			}
+			log.Printf("Found %d-long array: rsl: %t\n", value.Len(), rsl)
+			return rsl
+			// return value.Len() == 0
 		}
 		return value.IsNil() || value.Len() == 0
 	case TypeString:

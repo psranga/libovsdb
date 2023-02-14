@@ -136,10 +136,10 @@ func createPortOnBridge(ovs client.Client, bridgeName, interfaceName string) err
 		MAC:        &mac,
 		Interfaces: []string{newInterface.UUID},
 	}
-	for i := 0; i < 4096; i++ {
-		newPort.CVLANs[i] = i
-		newPort.Trunks[i] = i
-	}
+	// for i := 0; i < 4096; i++ {
+	// 	newPort.CVLANs[i] = i
+	// 	newPort.Trunks[i] = i
+	// }
 	createOps, err := ovs.Create(&newInterface, &newPort)
 	if err != nil {
 		return fmtErrorf("Error creating interface and port: %v", err)
